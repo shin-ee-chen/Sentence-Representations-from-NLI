@@ -129,6 +129,8 @@ def train_model(args):
     model = NLITrainer.load_from_checkpoint(trainer.checkpoint_callback.best_model_path) # Load best ch
     
     val_result = trainer.test(model, test_dataloaders=val_loader, verbose=False)
+    test_result = trainer.test(model, test_dataloaders=test_loader, verbose=False)
+    
     return model
 
 

@@ -9,8 +9,6 @@ import torch
 # from spacy.tokenizer import Tokenizer
 
 
-
-
 def load_data(batch_size, max_len = 10, device = "cpu"):
       # set up fields
       TEXT = data.Field(lower=True, include_lengths=True, batch_first=True, 
