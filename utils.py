@@ -1,6 +1,6 @@
 # import datasets
-from torchtext.legacy import data
-from torchtext.legacy.datasets import SNLI
+from torchtext import data
+from torchtext.datasets import SNLI
 from torchtext.vocab import GloVe
 from torch.utils.data import DataLoader
 

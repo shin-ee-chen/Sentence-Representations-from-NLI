@@ -88,16 +88,16 @@ def train_model(args):
     """
     
     save_name = args.encoder_type
-    device = "cpu"
+    # device = config.device
    
     # Load dataset
     train_loader, val_loader, test_loader, args.vocab_size = utils.load_data(batch_size=args.batch_size, 
-                                                                             device = device)
+                                                                             device = args.device)
     CHECKPOINT_PATH = "./checkpoints"
     # Create a PyTorch Lightning trainer with the generation callback
     trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, save_name),                                  # Where to save models
                          checkpoint_callback=ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_acc"), # Save the best checkpoint based on the maximum val_acc recorded. Saves only weights and not optimizer
-                         gpus=1 if str(device)=="cuda:0" else 0,                                                     # We run on a single GPU (if possible)
+                         gpus=1 if str(args.device)=="cuda" else 0,                                                     # We run on a single GPU (if possible)
                          max_epochs=args.epochs,                                                                             # How many epochs to train for if no patience is set
                          callbacks=[LearningRateMonitor("epoch")],                                                   # Log learning rate every epoch
                          progress_bar_refresh_rate=1)                                                                # In case your notebook crashes due to the progress bar, consider increasing the refresh rate
@@ -177,6 +177,8 @@ if __name__ == '__main__':
     parser.add_argument('--progress_bar', action='store_true',
                         help='Use a progress bar indicator for interactive experimentation. '+ \
                              'Not to be used in conjuction with SLURM jobs.')
+    parser.add_argument('--device', type=str, default=("cpu" if not torch.cuda.is_available() else "cuda"),
+                        help="Device to run the model on.")
 
     args = parser.parse_args()
 
