@@ -44,7 +44,7 @@ def spacy_tokenize(text):
 if __name__ == '__main__':
       train_iter, _, _, vocab_size = load_data(4)
       i = 0
-      train_iter = train_iter[0:10]
+      train_iter = train_iter
       
       embed = torch.nn.Embedding(vocab_size, 300, padding_idx=1)
       for item in train_iter:
