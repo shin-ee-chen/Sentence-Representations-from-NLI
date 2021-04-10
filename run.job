@@ -10,9 +10,9 @@
 #SBATCH --gres=gpu:1
 
 module load 2020
-module load Anaconda3
+module load Anaconda3/2020.02
 
-source activate atcs2021
+source activate dl2020
 
 srun python train.py
 echo "finish"

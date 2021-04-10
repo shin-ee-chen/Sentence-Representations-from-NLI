@@ -5,8 +5,8 @@ from torchtext.vocab import GloVe
 from torch.utils.data import DataLoader
 
 import torch
-import spacy
-from spacy.tokenizer import Tokenizer
+# import spacy
+# from spacy.tokenizer import Tokenizer
 
 
 
@@ -35,10 +35,10 @@ def load_data(batch_size, max_len = 10, device = "cpu"):
 
 
 
-def spacy_tokenize(text):
-      nlp = spacy.load("en_core_web_sm")
-      tokenizer = Tokenizer(nlp.vocab)
-      return [tok.text for tok in tokenizer(text)]
+# def spacy_tokenize(text):
+#       nlp = spacy.load("en_core_web_sm")
+#       tokenizer = Tokenizer(nlp.vocab)
+#       return [tok.text for tok in tokenizer(text)]
 
 
 if __name__ == '__main__':
