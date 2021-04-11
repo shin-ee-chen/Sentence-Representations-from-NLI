@@ -1,12 +1,11 @@
 # import datasets
-from torchtext import data
-from torchtext.datasets import SNLI
+from  torchtext.legacy import data
+from torchtext.legacy.datasets import SNLI
 from torchtext.vocab import GloVe
 
 import torch
 # import spacy
 # from spacy.tokenizer import Tokenizer
-
 
 def load_data(batch_size, max_len = 10, device = "cpu"):
       # set up fields
