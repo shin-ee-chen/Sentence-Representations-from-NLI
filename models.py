@@ -10,12 +10,12 @@ class NLINet(nn.Module):
          # 这个input dim是encoder的output size(average的话是batch_size, max_len, emb_dim)
         self.encoder_type = config.encoder_type
 
-        if config.encoder_type == "AWE":
+        if self.encoder_type == "AWE":
             self.embed = nn.Embedding(config.vocab_size, 300, padding_idx=1)
             input_size = 4 * 300
 
         else:
-            self.encoder = eval(config.encoder_type)(config)
+            self.encoder = eval(self.encoder_type)(config)
             input_size = 300
 
         self.linears = nn.Sequential(
