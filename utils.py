@@ -1,7 +1,7 @@
 # import datasets
 from torchtext import data
-from torchtext.datasets import SNLI
-from torchtext.vocab import GloVe
+from torchtext.legacy.datasets import SNLI
+from torchtext.legacy.vocab import GloVe
 
 import torch
 # import spacy
@@ -41,7 +41,7 @@ def load_data(batch_size, max_len = 10, device = "cpu"):
 if __name__ == '__main__':
       train_iter, _, _, vocab_size = load_data(4)
       i = 0
-      train_iter = train_iter.dataset.examples
+      # train_iter = train_iter.dataset.examples
       embed = torch.nn.Embedding(vocab_size, 300, padding_idx=1)
       for item in train_iter:
             # word vector
