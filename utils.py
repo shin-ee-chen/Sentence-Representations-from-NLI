@@ -1,7 +1,7 @@
 # import datasets
 from torchtext import data
-from torchtext.legacy.datasets import SNLI
-from torchtext.legacy.vocab import GloVe
+from torchtext.datasets import SNLI
+from torchtext.vocab import GloVe
 
 import torch
 # import spacy
