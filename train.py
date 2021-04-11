@@ -12,6 +12,8 @@ import os
 import utils
 from models import NLINet
 
+from torch.utils.tensorboard import SummaryWriter
+
 class NLITrainer(pl.LightningModule):
     
     def __init__(self, config):
@@ -61,7 +63,6 @@ class NLITrainer(pl.LightningModule):
         preds = self.model(text).argmax(dim=-1)
         acc = (labels == preds).float().mean()
         # self.config.lr /= 2 
-        # print(self.hparams.lr)
         # self.log('lr', self.config.lr)
         self.log('val_acc', acc) # By default logs it per epoch (weighted average over batches)
 
@@ -70,6 +71,7 @@ class NLITrainer(pl.LightningModule):
         text, labels = [batch.premise[0], batch.hypothesis[0]], batch.label
         preds = self.model(text).argmax(dim=-1)
         acc = (labels == preds).float().mean()
+        print("test acc: ", acc)
         self.log('test_acc', acc) # By default logs it per epoch (weighted average over batches), and returns it afterwards
 
 
@@ -82,6 +84,7 @@ class LRCallback(pl.Callback):
     def on_epoch_end(self, trainer, pl_module):
         pass
 
+
 def train_model(args):
     """
     Function for training and testing a NLI model.
@@ -93,7 +96,8 @@ def train_model(args):
     # device = config.device
    
     # Load dataset
-    train_loader, val_loader, test_loader, args.vocab_size = utils.load_data(batch_size=args.batch_size, 
+    train_loader, val_loader, test_loader, args.vocab_size = utils.load_data(args.batch_size, 
+                                                                             args.embedding_dim,
                                                                              device = args.device)
     CHECKPOINT_PATH = "./checkpoints"
     
@@ -157,8 +161,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # Model hyperparameters
-    # parser.add_argument('--embedding_dim', default=300, type=int,
-    #                     help='Dimensionality of latent space')
+    parser.add_argument('--embedding_dim', default=300, type=int,
+                        help='Dimensionality of latent space')
+    parser.add_argument("--lstm_num_hidden", type=int, default=2048, 
+                        help="encoder nhid dimension")
     # parser.add_argument('--z_dim', default=32, type=int,
     #                     help='Dimensionality of latent space')
     # parser.add_argument('--hidden_dims_gen', default=[128, 256, 512], 
@@ -173,8 +179,8 @@ if __name__ == '__main__':
     #                          'separate them. Example: \"512 256\"')
     # parser.add_argument('--dp_rate_gen', default=0.1, type=float,
     #                     help='Dropout rate in the discriminator')
-    parser.add_argument('--encoder_type', default="AWE", type=str,
-                        help='Type of encoder, choose from [AWE, ]')
+    parser.add_argument('--encoder_type', default="LSTM_Encoder", type=str,
+                        help='Type of encoder, choose from [AWE, LSTM_Encoder]')
 
     # Optimizer hyperparameters
     parser.add_argument('--lr', default=0.1, type=float,

@@ -11,12 +11,13 @@ class NLINet(nn.Module):
         self.encoder_type = config.encoder_type
 
         if self.encoder_type == "AWE":
-            self.embed = nn.Embedding(config.vocab_size, 300, padding_idx=1)
-            input_size = 4 * 300
+            self.embed = nn.Embedding(config.vocab_size, config.embedding_dim, padding_idx=1)
+            input_size = 4 * config.embedding_dim
+        # elif self.encoder_type == :
 
         else:
             self.encoder = eval(self.encoder_type)(config)
-            input_size = 300
+            input_size = config.lstm_num_hidden * 4
 
         self.linears = nn.Sequential(
             nn.Linear(input_size, 512),
@@ -33,6 +34,10 @@ class NLINet(nn.Module):
             u = self._awe_encoding(text_tup[0])
             v = self._awe_encoding(text_tup[1])
 
+        else:
+            u = self.encoder(text_tup[0])
+            v = self.encoder(text_tup[1])
+            
         features = torch.cat((u, v, torch.abs(u-v), u * v), dim = 1)
 
         out = self.softmax(self.linears(features))
@@ -44,3 +49,27 @@ class NLINet(nn.Module):
         x = self.embed(input)
         return torch.mean(x, dim = 1)
 
+
+class LSTM_Encoder(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.lstm_num_hidden = config.lstm_num_hidden
+        self.device = config.device
+
+        self.embedding = nn.Embedding(config.vocab_size, config.embedding_dim, padding_idx=1)
+        self.lstm = nn.LSTM(config.embedding_dim, config.lstm_num_hidden, 1,
+                            # dropout= 1 - config.dropout_keep_prob, 
+                            batch_first = True
+                            )
+        self.prev_state = None
+        
+
+
+    def forward(self, input):
+        if self.prev_state == None:
+            self.prev_state = (torch.zeros(1, input.shape[0], 
+                                           self.lstm_num_hidden).to(self.device),
+                               torch.zeros(1, input.shape[0],
+                                           self.lstm_num_hidden).to(self.device))
+        _, (h_n, _) = self.lstm(self.embedding(input), self.prev_state)
+        return h_n.squeeze(0)
