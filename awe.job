@@ -2,7 +2,7 @@
 
 #SBATCH --partition=gpu_shared
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=AVE
+#SBATCH --job-name=AWE
 #SBATCH --cpus-per-task=3
 #SBATCH --time=04:00:00
 #SBATCH --mem=32000M
@@ -23,9 +23,5 @@ source activate dl2020
 # Run your code
 echo "running AWE"
 srun python -u train.py --debug False --glove_name 840B --epochs 20 --batch_size 64 --encoder_type AWE
-echo "running LSTM"
-srun python -u train.py --debug False --glove_name 840B --epochs 20 --batch_size 64 --encoder_type LSTM_Encoder
-echo "running BLSTM"
-srun python -u train.py --debug False --glove_name 840B --epochs 20 --batch_size 64 --encoder_type BLSTM_Encoder
 
 echo "finish"
