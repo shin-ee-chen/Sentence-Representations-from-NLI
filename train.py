@@ -116,7 +116,7 @@ def train_model(args):
                              progress_bar_refresh_rate=10,
                              limit_train_batches=10,
                              limit_val_batches=10,
-                             limit_test_batches=10
+                             limit_test_batches=100
                              ) 
     else:
         trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, save_name),                                  # Where to save models
@@ -124,7 +124,7 @@ def train_model(args):
                              gpus=1 if str(args.device)=="cuda" else 0,                                                     # We run on a single GPU (if possible)
                              max_epochs=args.epochs,                                                                             # How many epochs to train for if no patience is set
                              callbacks=[LearningRateMonitor("epoch")],                                                   # Log learning rate every epoch
-                             progress_bar_refresh_rate=10
+                             progress_bar_refresh_rate=100
                              )                                                                   # In case your notebook crashes due to the progress bar, consider increasing the refresh rate
     # trainer.logger._log_graph = True         # If True, we plot the computation graph in tensorboard
     # trainer.logger._default_hp_metric = None # Optional logging argument that we don't need
