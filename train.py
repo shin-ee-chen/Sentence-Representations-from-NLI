@@ -1,3 +1,7 @@
+import time
+import argparse
+import os
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -7,10 +11,10 @@ import torch.utils.data as data
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
-import argparse
-import os
 import utils
 from models import NLINet
+
+
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -25,6 +29,7 @@ class NLITrainer(pl.LightningModule):
         # # Create loss module
         self.config = config
         self.loss_module = nn.CrossEntropyLoss()
+        
         # # Example input for visualizing the graph in Tensorboard
         # self.example_input_array = torch.zeros((1, 3, 32, 32), dtype=torch.float32)
 
@@ -36,19 +41,19 @@ class NLITrainer(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = optim.SGD(self.parameters(), self.config.lr)
         lambda1 = lambda epoch: 0.65 ** epoch
-        # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)
+        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)
         # need to change scheduler 
         # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[100,150], gamma=0.1)
         # We will reduce the learning rate by 0.1 after 100 and 150 epochs
         # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08, verbose=False)
         
-        # return [optimizer], [scheduler]
-        return [optimizer]
+        return [optimizer], [scheduler]
+        # return [optimizer]
 
 
     def training_step(self, batch, batch_idx):
         # "batch" is the output of the training data loader.
-        text, labels = [batch.premise[0], batch.hypothesis[0]], batch.label
+        text, labels = [batch.premise, batch.hypothesis], batch.label
         preds = self.model(text)
         loss = self.loss_module(preds, labels)
         acc = (preds.argmax(dim=-1) == labels).float().mean()
@@ -59,19 +64,18 @@ class NLITrainer(pl.LightningModule):
 
 
     def validation_step(self, batch, batch_idx):
-        text, labels = [batch.premise[0], batch.hypothesis[0]], batch.label
+        text, labels = [batch.premise, batch.hypothesis], batch.label
         preds = self.model(text).argmax(dim=-1)
         acc = (labels == preds).float().mean()
         # self.config.lr /= 2 
-        # self.log('lr', self.config.lr)
+        self.log('lr', self.config.lr)
         self.log('val_acc', acc) # By default logs it per epoch (weighted average over batches)
 
 
     def test_step(self, batch, batch_idx):
-        text, labels = [batch.premise[0], batch.hypothesis[0]], batch.label
+        text, labels = [batch.premise, batch.hypothesis], batch.label
         preds = self.model(text).argmax(dim=-1)
         acc = (labels == preds).float().mean()
-        print("test acc: ", acc)
         self.log('test_acc', acc) # By default logs it per epoch (weighted average over batches), and returns it afterwards
 
 
@@ -109,7 +113,7 @@ def train_model(args):
                              gpus=1 if str(args.device)=="cuda" else 0,                                                     # We run on a single GPU (if possible)
                              max_epochs=args.epochs,                                                                             # How many epochs to train for if no patience is set
                              callbacks=[LearningRateMonitor("epoch")],                                                   # Log learning rate every epoch
-                             progress_bar_refresh_rate=1,
+                             progress_bar_refresh_rate=10,
                              limit_train_batches=10,
                              limit_val_batches=10,
                              limit_test_batches=10
@@ -120,7 +124,7 @@ def train_model(args):
                              gpus=1 if str(args.device)=="cuda" else 0,                                                     # We run on a single GPU (if possible)
                              max_epochs=args.epochs,                                                                             # How many epochs to train for if no patience is set
                              callbacks=[LearningRateMonitor("epoch")],                                                   # Log learning rate every epoch
-                             progress_bar_refresh_rate=1
+                             progress_bar_refresh_rate=10
                              )                                                                   # In case your notebook crashes due to the progress bar, consider increasing the refresh rate
     # trainer.logger._log_graph = True         # If True, we plot the computation graph in tensorboard
     # trainer.logger._default_hp_metric = None # Optional logging argument that we don't need
@@ -145,7 +149,6 @@ def train_model(args):
     pl.seed_everything(args.seed) # To be reproducable
     
     model = NLITrainer(args)
-
     trainer.fit(model, train_loader, val_loader)
     model = NLITrainer.load_from_checkpoint(trainer.checkpoint_callback.best_model_path) # Load best ch
     
@@ -165,22 +168,18 @@ if __name__ == '__main__':
                         help='Dimensionality of latent space')
     parser.add_argument("--lstm_num_hidden", type=int, default=2048, 
                         help="encoder nhid dimension")
-    # parser.add_argument('--z_dim', default=32, type=int,
-    #                     help='Dimensionality of latent space')
-    # parser.add_argument('--hidden_dims_gen', default=[128, 256, 512], 
-    #                     type=int, nargs='+',
-    #                     help='Hidden dimensionalities to use inside the ' + \
-    #                          'generator. To specify multiple, use " " to ' + \
-    #                          'separate them. Example: \"128 256 512\"')
-    # parser.add_argument('--hidden_dims_disc', default=[512, 256], 
-    #                     type=int, nargs='+',
-    #                     help='Hidden dimensionalities to use inside the ' + \
-    #                          'discriminator. To specify multiple, use " " to ' + \
-    #                          'separate them. Example: \"512 256\"')
-    # parser.add_argument('--dp_rate_gen', default=0.1, type=float,
-    #                     help='Dropout rate in the discriminator')
-    parser.add_argument('--encoder_type', default="LSTM_Encoder", type=str,
-                        help='Type of encoder, choose from [AWE, LSTM_Encoder]')
+    parser.add_argument('--fc_dim', default=512, type=int,
+                        help='nhid dimension of fully connect layers')
+    parser.add_argument('--dpout_fc', default=0., type=float,
+                        help='dropout rate of fc') 
+    parser.add_argument('--dpout_lstm', default=0., type=float,
+                        help='dropout rate of lstm')                 
+    parser.add_argument('--encoder_type', default="AWE", type=str, 
+                        choices=["AWE", "LSTM_Encoder", "BLSTM_Encoder"],
+                        help='Type of encoder, choose from [AWE, LSTM_Encoder, BLSTM_Encoder]')
+    parser.add_argument('--max_pooling', type=str, choices=["False","True"] ,default= "True",
+                        help="Whether to use small dataset to debug")
+
 
     # Optimizer hyperparameters
     parser.add_argument('--lr', default=0.1, type=float,
@@ -206,8 +205,12 @@ if __name__ == '__main__':
                         help="Device to run the model on.")
     parser.add_argument('--debug', type=str, choices=["False","True"] ,default= "True",
                         help="Whether to use small dataset to debug")
-
-
+    parser.add_argument('--glove_name', type=str, default= "6B",
+                        help="glove name: 6B/840B")
+                        
     args = parser.parse_args()
 
+    time_b = time.time()
     train_model(args)
+    time_e = time.time()
+    print("Time elapsed:{:.2}".format((time_e - time_b)/60))
