@@ -102,6 +102,7 @@ def train_model(args):
     # Load dataset
     train_loader, val_loader, test_loader, args.vocab_size = utils.load_data(args.batch_size, 
                                                                              args.embedding_dim,
+                                                                             glove_name = args.glove_name,
                                                                              device = args.device)
     CHECKPOINT_PATH = "./checkpoints"
     

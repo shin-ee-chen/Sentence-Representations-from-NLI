@@ -72,6 +72,7 @@ class LSTM_Encoder(nn.Module):
         self.lstm = nn.LSTM(config.embedding_dim, config.lstm_num_hidden, 1,
                             dropout=config.dpout_lstm
                             )
+                            
         self.prev_state = None
         
 
