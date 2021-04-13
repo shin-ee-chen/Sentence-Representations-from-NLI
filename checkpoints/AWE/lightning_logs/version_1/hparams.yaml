@@ -1,9 +1,0 @@
-batch_size: 128
-encoder_type: AWE
-epochs: 5
-log_dir: GAN_logs/
-lr: 0.0002
-num_workers: 4
-progress_bar: false
-seed: 42
-vocab_size: 56220

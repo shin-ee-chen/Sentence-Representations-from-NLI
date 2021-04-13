@@ -14,8 +14,6 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 import utils
 from models import NLINet
 
-
-
 from torch.utils.tensorboard import SummaryWriter
 
 class NLITrainer(pl.LightningModule):
@@ -96,10 +94,11 @@ def train_model(args):
     # device = config.device
    
     # Load dataset
-    train_loader, val_loader, test_loader, args.vocab_size = utils.load_data(args.batch_size, 
-                                                                             args.embedding_dim,
-                                                                             glove_name = args.glove_name,
-                                                                             device = args.device)
+    train_loader, val_loader, test_loader, args.TEXT = utils.load_data(args.batch_size, 
+                                                                       args.embedding_dim,
+                                                                       glove_name = args.glove_name,
+                                                                       device = args.device)
+    
     CHECKPOINT_PATH = "./checkpoints"
     
     
@@ -164,7 +163,7 @@ if __name__ == '__main__':
     # Model hyperparameters
     parser.add_argument('--embedding_dim', default=300, type=int,
                         help='Dimensionality of latent space')
-    parser.add_argument("--lstm_num_hidden", type=int, default=512, 
+    parser.add_argument("--lstm_num_hidden", type=int, default=10, 
                         help="encoder nhid dimension")
     parser.add_argument('--fc_dim', default=512, type=int,
                         help='nhid dimension of fully connect layers')
@@ -172,7 +171,7 @@ if __name__ == '__main__':
                         help='dropout rate of fc') 
     parser.add_argument('--dpout_lstm', default=0., type=float,
                         help='dropout rate of lstm')                 
-    parser.add_argument('--encoder_type', default="LSTM_Encoder", type=str, 
+    parser.add_argument('--encoder_type', default="BLSTM_Encoder", type=str, 
                         choices=["AWE", "LSTM_Encoder", "BLSTM_Encoder"],
                         help='Type of encoder, choose from [AWE, LSTM_Encoder, BLSTM_Encoder]')
     parser.add_argument('--max_pooling', type=str, choices=["False","True"] ,default= "True",

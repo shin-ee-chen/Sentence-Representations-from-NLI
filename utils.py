@@ -14,7 +14,8 @@ import argparse
 
 def load_data(batch_size, embedding_dim, glove_name = "6B", device = "cpu"):
       # set up fields
-      TEXT = data.Field(lower=True, include_lengths=True, batch_first=True, tokenize="spacy")
+      TEXT = data.Field(lower=True, include_lengths=True, batch_first=True, 
+                        tokenize="spacy",tokenizer_language = 'en_core_web_sm')
       LABEL = data.Field(sequential=False)
 
       # make splits for data
@@ -23,15 +24,19 @@ def load_data(batch_size, embedding_dim, glove_name = "6B", device = "cpu"):
       # build the vocabulary
       TEXT.build_vocab(train, vectors=GloVe(name= glove_name, dim= embedding_dim))
       # TEXT.build_vocab(train, vectors=GloVe(name='840B', dim=300))
+      LABEL.build_vocab(train, specials_first=False)
 
       vocab_size = len(TEXT.vocab)
-      LABEL.build_vocab(train, specials_first=False)
+      pretrained_embeddings = TEXT.vocab.vectors
 
       train_iter, val_iter, test_iter = data.Iterator.splits(
                                         (train, val, test), 
                                         batch_size=batch_size, 
                                         device = device)
-      return train_iter, val_iter, test_iter, vocab_size
+
+      return train_iter, val_iter, test_iter, TEXT
+
+
 
 
 
@@ -59,9 +64,9 @@ if __name__ == '__main__':
 
       config = parser.parse_args()
 
-      train_iter, _, _, config.vocab_size = load_data(4, config.embedding_dim)
+      train_iter, _, _, config.TEXT = load_data(4, config.embedding_dim)
       i = 0
-      encoder = BLSTM_Encoder(config)
+      encoder = LSTM_Encoder(config)
       for batch in train_iter:
             # word vector
             text, labels = [batch.premise, batch.hypothesis], batch.label

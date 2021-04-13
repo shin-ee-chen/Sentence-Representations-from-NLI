@@ -4,6 +4,17 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torch
 
+def load_pretrained_embed(TEXT,embedding_dim):
+      PAD_IDX = TEXT.vocab.stoi[TEXT.pad_token]
+      UNK_IDX = TEXT.vocab.stoi[TEXT.unk_token]
+
+      embedding = nn.Embedding(len(TEXT.vocab), embedding_dim, padding_idx=PAD_IDX)
+      embedding.weight.data.copy_(TEXT.vocab.vectors)
+
+      embedding.weight.data[UNK_IDX] = torch.zeros(embedding_dim)
+      embedding.weight.data[PAD_IDX] = torch.zeros(embedding_dim)
+      return embedding
+
 class NLINet(nn.Module):
     def __init__(self, config):
         super(NLINet, self).__init__()
@@ -11,7 +22,10 @@ class NLINet(nn.Module):
         self.encoder_type = config.encoder_type
 
         if self.encoder_type == "AWE":
-            self.embedding = nn.Embedding(config.vocab_size, config.embedding_dim, padding_idx=1)
+            # self.embedding = nn.Embedding(config.vocab_size, config.embedding_dim, padding_idx=1)
+            # self.embedding.weight.data.copy_(config.pretrained_embed)
+            with torch.no_grad():
+                self.embedding = load_pretrained_embed(config.TEXT,config.embedding_dim)
             encode_size = 4 * config.embedding_dim
 
         elif self.encoder_type == "LSTM_Encoder":
@@ -62,11 +76,24 @@ class NLINet(nn.Module):
 
         return out
 
+    def encode(self, text_tup):
+        """
+        Inputs:
+        text_tup - [text_data, text_lengths]
+        """
+        if self.encoder_type == "AWE":
+             emb = _awe_encoding(text_tup[0])
+        else:
+            emb = self.encoder(text_tup)
+        
+        return emb
+    
 
     def _awe_encoding(self, input):
         x = self.embedding(input[0])
         return torch.mean(x, dim = 1)
 
+    
 
 class LSTM_Encoder(nn.Module):
     def __init__(self, config):
@@ -74,7 +101,19 @@ class LSTM_Encoder(nn.Module):
         self.lstm_num_hidden = config.lstm_num_hidden
         self.device = config.device
 
-        self.embedding = nn.Embedding(config.vocab_size, config.embedding_dim, padding_idx=1)
+        with torch.no_grad():
+            self.embedding = load_pretrained_embed(config.TEXT,config.embedding_dim)
+
+        # TEXT = config.TEXT
+        # PAD_IDX = TEXT.vocab.stoi[TEXT.pad_token]
+        # UNK_IDX = TEXT.vocab.stoi[TEXT.unk_token]
+
+        # self.embedding = nn.Embedding(len(TEXT.vocab), config.embedding_dim, padding_idx=PAD_IDX)
+        # self.embedding.weight.data.copy_(TEXT.vocab.vectors)
+
+        # self.embedding.weight.data[UNK_IDX] = torch.zeros(300)
+        # self.embedding.weight.data[PAD_IDX] = torch.zeros(300)
+
         self.lstm = nn.LSTM(config.embedding_dim, config.lstm_num_hidden, 1,
                             dropout=config.dpout_lstm
                             )
@@ -106,7 +145,11 @@ class BLSTM_Encoder(nn.Module):
         self.lstm_num_hidden = config.lstm_num_hidden
         self.device = config.device
 
-        self.embedding = nn.Embedding(config.vocab_size, config.embedding_dim, padding_idx=1)
+        # self.embedding = nn.Embedding(config.vocab_size, config.embedding_dim, padding_idx=1)
+        # self.embedding.weight.data.copy_(config.pretrained_embed)
+        with torch.no_grad():
+            self.embedding = load_pretrained_embed(config.TEXT,config.embedding_dim)
+
         self.lstm = nn.LSTM(config.embedding_dim, config.lstm_num_hidden, 1,
                             dropout= config.dpout_lstm, 
                             bidirectional = True
