@@ -82,7 +82,6 @@ class LSTM_Encoder(nn.Module):
         self.prev_state = None
         
 
-
     def forward(self, input):
         if self.prev_state == None:
             self.prev_state = (torch.zeros(1, input[0].shape[0], 
@@ -90,7 +89,9 @@ class LSTM_Encoder(nn.Module):
                                torch.zeros(1, input[0].shape[0],
                                            self.lstm_num_hidden).to(self.device))
         emb = self.embedding(input[0])
-        # print("LSTM self.device:", self.device)
+        
+        from ipdb import set_trace
+        set_trace()
         packed_input = nn.utils.rnn.pack_padded_sequence(emb, input[1].cpu(), batch_first=True, 
                                                          enforce_sorted=False)
         _, (h_n, _) = self.lstm(packed_input, self.prev_state)
