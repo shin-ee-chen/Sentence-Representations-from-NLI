@@ -14,18 +14,22 @@ class NLINet(nn.Module):
             self.embedding = nn.Embedding(config.vocab_size, config.embedding_dim, padding_idx=1)
             encode_size = 4 * config.embedding_dim
 
-        elif self.encoder_type == "LSTM_encoder":
+        elif self.encoder_type == "LSTM_Encoder":
             self.encoder = eval(self.encoder_type)(config)
-            encode_size = config.lstm_num_hidden * 4
+            encode_size = 4 * config.lstm_num_hidden
 
-        else:
+        elif self.encoder_type == "BLSTM_Encoder":
             self.encoder = eval(self.encoder_type)(config)
             encode_size = config.lstm_num_hidden * 4 * 2
+        
+        else:
+            print("Error Encoder Type")
+            exit(-1)
 
         
         # self.classifer = nn.Sequential(
-        #     nn.Linear(input_size, 512),
-            #   nn.Linear(512, 512),
+        #     nn.Linear(self.encode_size, 512),
+        #     nn.Linear(512, 512),
         #     nn.Linear(512, 3)
         # )
         self.classifer =  nn.Sequential(
@@ -53,7 +57,8 @@ class NLINet(nn.Module):
             
         features = torch.cat((u, v, torch.abs(u-v), u * v), dim = 1)
 
-        out = self.softmax(self.classifer(features))
+        out = self.classifer(features)
+        out = self.softmax(out)
 
         return out
 
@@ -84,9 +89,9 @@ class LSTM_Encoder(nn.Module):
                                            self.lstm_num_hidden).to(self.device),
                                torch.zeros(1, input[0].shape[0],
                                            self.lstm_num_hidden).to(self.device))
-        emb = self.embedding(input[0]).to(self.device)
-        print("LSTM self.device:", self.device)
-        packed_input = nn.utils.rnn.pack_padded_sequence(emb, input[1], batch_first=True, 
+        emb = self.embedding(input[0])
+        # print("LSTM self.device:", self.device)
+        packed_input = nn.utils.rnn.pack_padded_sequence(emb, input[1].cpu(), batch_first=True, 
                                                          enforce_sorted=False)
         _, (h_n, _) = self.lstm(packed_input, self.prev_state)
 
@@ -117,12 +122,13 @@ class BLSTM_Encoder(nn.Module):
                                torch.zeros(2, input[0].shape[0],
                                            self.lstm_num_hidden).to(self.device))
         emb = self.embedding(input[0])
-        packed_input = nn.utils.rnn.pack_padded_sequence(emb, input[1], batch_first=True, 
+        packed_input = nn.utils.rnn.pack_padded_sequence(emb, input[1].cpu(), batch_first=True, 
                                                          enforce_sorted=False)
         output, (h_n, _) = self.lstm(packed_input, self.prev_state)
         
         
         if self.max_pooling == "True":
+            output = nn.utils.rnn.pad_packed_sequence(output, batch_first=True)[0]
             # output size is (batch_size, seq_len, lstm_num_hidden * 2)
             sent_output = [x[:l] for x, l in zip(output, input[1])]
             emb = [torch.max(x, 0)[0] for x in sent_output]       

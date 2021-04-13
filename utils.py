@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
       train_iter, _, _, config.vocab_size = load_data(4, config.embedding_dim)
       i = 0
-      encoder = LSTM_Encoder(config)
+      encoder = BLSTM_Encoder(config)
       for batch in train_iter:
             # word vector
             text, labels = [batch.premise, batch.hypothesis], batch.label

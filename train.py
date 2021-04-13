@@ -40,15 +40,9 @@ class NLITrainer(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = optim.SGD(self.parameters(), self.config.lr)
-        lambda1 = lambda epoch: 0.65 ** epoch
-        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)
-        # need to change scheduler 
-        # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[100,150], gamma=0.1)
-        # We will reduce the learning rate by 0.1 after 100 and 150 epochs
-        # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08, verbose=False)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, gamma=0.99)
         
         return [optimizer], [scheduler]
-        # return [optimizer]
 
 
     def training_step(self, batch, batch_idx):
@@ -68,7 +62,7 @@ class NLITrainer(pl.LightningModule):
         preds = self.model(text).argmax(dim=-1)
         acc = (labels == preds).float().mean()
         # self.config.lr /= 2 
-        self.log('lr', self.config.lr)
+
         self.log('val_acc', acc) # By default logs it per epoch (weighted average over batches)
 
 
@@ -81,12 +75,14 @@ class NLITrainer(pl.LightningModule):
 
 class LRCallback(pl.Callback):
     
-    def __init__(self, input_imgs, every_n_epochs=1):
+    def __init__(self, every_n_epochs=1):
         super().__init__()
+        self.best_val_acc = 0
         
 
-    def on_epoch_end(self, trainer, pl_module):
-        pass
+    def on_validation_epoch_end(trainer, pl_module, outputs):
+        print(outputs)
+        trainer.optimizers
 
 
 def train_model(args):
@@ -113,7 +109,8 @@ def train_model(args):
                              checkpoint_callback=ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_acc"), # Save the best checkpoint based on the maximum val_acc recorded. Saves only weights and not optimizer
                              gpus=1 if str(args.device)=="cuda" else 0,                                                     # We run on a single GPU (if possible)
                              max_epochs=args.epochs,                                                                             # How many epochs to train for if no patience is set
-                             callbacks=[LearningRateMonitor("epoch")],                                                   # Log learning rate every epoch
+                             callbacks=[LearningRateMonitor("epoch")],   
+                            #  callbacks=[LRCallback()],                                                # Log learning rate every epoch
                              progress_bar_refresh_rate=10,
                              limit_train_batches=10,
                              limit_val_batches=10,
@@ -167,7 +164,7 @@ if __name__ == '__main__':
     # Model hyperparameters
     parser.add_argument('--embedding_dim', default=300, type=int,
                         help='Dimensionality of latent space')
-    parser.add_argument("--lstm_num_hidden", type=int, default=2048, 
+    parser.add_argument("--lstm_num_hidden", type=int, default=512, 
                         help="encoder nhid dimension")
     parser.add_argument('--fc_dim', default=512, type=int,
                         help='nhid dimension of fully connect layers')
@@ -175,7 +172,7 @@ if __name__ == '__main__':
                         help='dropout rate of fc') 
     parser.add_argument('--dpout_lstm', default=0., type=float,
                         help='dropout rate of lstm')                 
-    parser.add_argument('--encoder_type', default="LSTM_Encoder", type=str, 
+    parser.add_argument('--encoder_type', default="BLSTM_Encoder", type=str, 
                         choices=["AWE", "LSTM_Encoder", "BLSTM_Encoder"],
                         help='Type of encoder, choose from [AWE, LSTM_Encoder, BLSTM_Encoder]')
     parser.add_argument('--max_pooling', type=str, choices=["False","True"] ,default= "True",
@@ -214,4 +211,4 @@ if __name__ == '__main__':
     time_b = time.time()
     train_model(args)
     time_e = time.time()
-    print("Time elapsed:{:.2}".format((time_e - time_b)/60))
+    print("Time elapsed:{:.2} mins".format((time_e - time_b)/60))
