@@ -23,8 +23,9 @@ class NLINet(nn.Module):
             encode_size = config.lstm_num_hidden * 4 * 2
 
         
-        # self.linears = nn.Sequential(
+        # self.classifer = nn.Sequential(
         #     nn.Linear(input_size, 512),
+            #   nn.Linear(512, 512),
         #     nn.Linear(512, 3)
         # )
         self.classifer =  nn.Sequential(
@@ -83,7 +84,8 @@ class LSTM_Encoder(nn.Module):
                                            self.lstm_num_hidden).to(self.device),
                                torch.zeros(1, input[0].shape[0],
                                            self.lstm_num_hidden).to(self.device))
-        emb = self.embedding(input[0])
+        emb = self.embedding(input[0]).to(self.device)
+        print("LSTM self.device:", self.device)
         packed_input = nn.utils.rnn.pack_padded_sequence(emb, input[1], batch_first=True, 
                                                          enforce_sorted=False)
         _, (h_n, _) = self.lstm(packed_input, self.prev_state)
