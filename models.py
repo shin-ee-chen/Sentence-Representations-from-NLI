@@ -83,10 +83,11 @@ class LSTM_Encoder(nn.Module):
                                            self.lstm_num_hidden).to(self.device),
                                torch.zeros(1, input[0].shape[0],
                                            self.lstm_num_hidden).to(self.device))
-        packed_input = pack_padded_sequence(input[0], input[1], batch_first=True, enforce_sorted=False)
-        _, (h_n, _) = self.lstm(self.embedding(packed_input), self.prev_state)
+        emb = self.embedding(input[0])
+        packed_input = nn.utils.rnn.pack_padded_sequence(emb, input[1], batch_first=True, 
+                                                         enforce_sorted=False)
+        _, (h_n, _) = self.lstm(packed_input, self.prev_state)
 
-        # h_n_unpacked = nn.utils.rnn.pad_packed_sequence(h_n, batch_first=True)
         # output size is (batch_size, lstm_num_hidden)
         return h_n.squeeze(0)
 
@@ -101,7 +102,6 @@ class BLSTM_Encoder(nn.Module):
         self.embedding = nn.Embedding(config.vocab_size, config.embedding_dim, padding_idx=1)
         self.lstm = nn.LSTM(config.embedding_dim, config.lstm_num_hidden, 1,
                             dropout= config.dpout_lstm, 
-                            batch_first = True,
                             bidirectional = True
                             )
         self.prev_state = None
@@ -114,9 +114,10 @@ class BLSTM_Encoder(nn.Module):
                                            self.lstm_num_hidden).to(self.device),
                                torch.zeros(2, input[0].shape[0],
                                            self.lstm_num_hidden).to(self.device))
-        packed_input = nn.utils.rnn.pack_padded_sequence(input[0], input[1], batch_first=True, 
+        emb = self.embedding(input[0])
+        packed_input = nn.utils.rnn.pack_padded_sequence(emb, input[1], batch_first=True, 
                                                          enforce_sorted=False)
-        output, (h_n, _) = self.lstm(self.embedding(input[0]), self.prev_state)
+        output, (h_n, _) = self.lstm(packed_input, self.prev_state)
         
         
         if self.max_pooling == "True":

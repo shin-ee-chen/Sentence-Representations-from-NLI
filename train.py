@@ -175,7 +175,7 @@ if __name__ == '__main__':
                         help='dropout rate of fc') 
     parser.add_argument('--dpout_lstm', default=0., type=float,
                         help='dropout rate of lstm')                 
-    parser.add_argument('--encoder_type', default="AWE", type=str, 
+    parser.add_argument('--encoder_type', default="LSTM_Encoder", type=str, 
                         choices=["AWE", "LSTM_Encoder", "BLSTM_Encoder"],
                         help='Type of encoder, choose from [AWE, LSTM_Encoder, BLSTM_Encoder]')
     parser.add_argument('--max_pooling', type=str, choices=["False","True"] ,default= "True",

@@ -53,11 +53,15 @@ if __name__ == '__main__':
                         help="Device to run the model on.")
       parser.add_argument('--max_pooling', type=str, choices=["False","True"] ,default= "True",
                         help="Whether to use small dataset to debug")
+
+      parser.add_argument('--dpout_lstm', default=0., type=float,
+                        help='dropout rate of lstm') 
+
       config = parser.parse_args()
 
       train_iter, _, _, config.vocab_size = load_data(4, config.embedding_dim)
       i = 0
-      encoder = BLSTM_Encoder(config)
+      encoder = LSTM_Encoder(config)
       for batch in train_iter:
             # word vector
             text, labels = [batch.premise, batch.hypothesis], batch.label

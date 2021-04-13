@@ -21,7 +21,7 @@ cd $HOME/Sentence_Representations_from_NLI
 # Activate your environment
 source activate dl2020
 # Run your code
-echo "running BLSTM"
+echo "running BLSTM"
 srun python -u train.py --debug False --glove_name 840B --epochs 20 --batch_size 64 --encoder_type BLSTM_Encoder
 
-echo "finish"
+echo "finish"
