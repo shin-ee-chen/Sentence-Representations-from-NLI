@@ -90,8 +90,7 @@ class LSTM_Encoder(nn.Module):
                                            self.lstm_num_hidden).to(self.device))
         emb = self.embedding(input[0])
         
-        from ipdb import set_trace
-        set_trace()
+        
         packed_input = nn.utils.rnn.pack_padded_sequence(emb, input[1].cpu(), batch_first=True, 
                                                          enforce_sorted=False)
         _, (h_n, _) = self.lstm(packed_input, self.prev_state)
