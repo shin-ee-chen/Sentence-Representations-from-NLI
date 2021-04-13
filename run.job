@@ -21,11 +21,11 @@ cd $HOME/Sentence_Representations_from_NLI
 # Activate your environment
 source activate dl2020
 # Run your code
-echo "running AWE"
+echo "running AWE"
 srun python -u train.py --debug False --glove_name 840B --epochs 20 --batch_size 64 --encoder_type AWE
-echo "running LSTM"
+echo "running LSTM"
 srun python -u train.py --debug False --glove_name 840B --epochs 20 --batch_size 64 --encoder_type LSTM_Encoder
-echo "running BLSTM"
+echo "running BLSTM"
 srun python -u train.py --debug False --glove_name 840B --epochs 20 --batch_size 64 --encoder_type BLSTM_Encoder
 
-echo "finish"
+echo "finish"
