@@ -2,5 +2,4 @@
 .vector_cache/
 .vscode/
 __pycache__/
-checkpoints/
 .data/snli/snli_1.0.zip
