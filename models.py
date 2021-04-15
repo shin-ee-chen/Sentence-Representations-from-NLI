@@ -4,16 +4,63 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torch
 
-def load_pretrained_embed(TEXT,embedding_dim):
-      PAD_IDX = TEXT.vocab.stoi[TEXT.pad_token]
-      UNK_IDX = TEXT.vocab.stoi[TEXT.unk_token]
+import utils
 
-      embedding = nn.Embedding(len(TEXT.vocab), embedding_dim, padding_idx=PAD_IDX)
-      embedding.weight.data.copy_(TEXT.vocab.vectors)
+class NLITrainer(pl.LightningModule):
+    
+    def __init__(self, config):
+        super().__init__()
+        # Exports the hyperparameters to a YAML file, and create "self.hparams" namespace
+        self.save_hyperparameters()
+        # Create model
+        self.model = NLINet(config)
+        # # Create loss module
+        self.config = config
+        self.loss_module = nn.CrossEntropyLoss()
+        
+        # # Example input for visualizing the graph in Tensorboard
+        # self.example_input_array = torch.zeros((1, 3, 32, 32), dtype=torch.float32)
 
-      embedding.weight.data[UNK_IDX] = torch.zeros(embedding_dim)
-      embedding.weight.data[PAD_IDX] = torch.zeros(embedding_dim)
-      return embedding
+       
+    def forward(self, inout):
+        return self.model(input)
+
+
+    def configure_optimizers(self):
+        optimizer = optim.SGD(self.parameters(), self.config.lr)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, gamma=0.99)
+        
+        return [optimizer], [scheduler]
+
+
+    def training_step(self, batch, batch_idx):
+        # "batch" is the output of the training data loader.
+        text, labels = [batch.premise, batch.hypothesis], batch.label
+        preds = self.model(text)
+        loss = self.loss_module(preds, labels)
+        acc = (preds.argmax(dim=-1) == labels).float().mean()
+        
+        self.log('train_acc', acc, on_step=False, on_epoch=True) # Logs the accuracy per epoch to tensorboard (weighted average over batches)
+        self.log('train_loss', loss)
+        return loss # Return tensor to call ".backward" on
+
+
+    def validation_step(self, batch, batch_idx):
+        text, labels = [batch.premise, batch.hypothesis], batch.label
+        preds = self.model(text).argmax(dim=-1)
+        acc = (labels == preds).float().mean()
+        # self.config.lr /= 2 
+
+        self.log('val_acc', acc) # By default logs it per epoch (weighted average over batches)
+
+
+    def test_step(self, batch, batch_idx):
+        text, labels = [batch.premise, batch.hypothesis], batch.label
+        preds = self.model(text).argmax(dim=-1)
+        acc = (labels == preds).float().mean()
+        self.log('test_acc', acc) # By default logs it per epoch (weighted average over batches), and returns it afterwards
+
+
 
 class NLINet(nn.Module):
     def __init__(self, config):
@@ -25,7 +72,7 @@ class NLINet(nn.Module):
             # self.embedding = nn.Embedding(config.vocab_size, config.embedding_dim, padding_idx=1)
             # self.embedding.weight.data.copy_(config.pretrained_embed)
             with torch.no_grad():
-                self.embedding = load_pretrained_embed(config.TEXT,config.embedding_dim)
+                self.embedding = utils.load_pretrained_embed(config.TEXT,config.embedding_dim)
             encode_size = 4 * config.embedding_dim
 
         elif self.encoder_type == "LSTM_Encoder":
@@ -87,7 +134,6 @@ class NLINet(nn.Module):
             emb = self.encoder(text_tup)
         
         return emb
-    
 
     def _awe_encoding(self, input):
         x = self.embedding(input[0])
@@ -102,7 +148,7 @@ class LSTM_Encoder(nn.Module):
         self.device = config.device
 
         with torch.no_grad():
-            self.embedding = load_pretrained_embed(config.TEXT,config.embedding_dim)
+            self.embedding = utils.load_pretrained_embed(config.TEXT,config.embedding_dim)
 
         # TEXT = config.TEXT
         # PAD_IDX = TEXT.vocab.stoi[TEXT.pad_token]
@@ -124,9 +170,9 @@ class LSTM_Encoder(nn.Module):
     def forward(self, input):
         if self.prev_state == None:
             self.prev_state = (torch.zeros(1, input[0].shape[0], 
-                                           self.lstm_num_hidden).to(self.device),
+                                           self.lstm_num_hidden),
                                torch.zeros(1, input[0].shape[0],
-                                           self.lstm_num_hidden).to(self.device))
+                                           self.lstm_num_hidden))
         emb = self.embedding(input[0])
         
         
@@ -148,7 +194,7 @@ class BLSTM_Encoder(nn.Module):
         # self.embedding = nn.Embedding(config.vocab_size, config.embedding_dim, padding_idx=1)
         # self.embedding.weight.data.copy_(config.pretrained_embed)
         with torch.no_grad():
-            self.embedding = load_pretrained_embed(config.TEXT,config.embedding_dim)
+            self.embedding = utils.load_pretrained_embed(config.TEXT,config.embedding_dim)
 
         self.lstm = nn.LSTM(config.embedding_dim, config.lstm_num_hidden, 1,
                             dropout= config.dpout_lstm, 
@@ -161,9 +207,9 @@ class BLSTM_Encoder(nn.Module):
     def forward(self, input):
         if self.prev_state == None:
             self.prev_state = (torch.zeros(2, input[0].shape[0], 
-                                           self.lstm_num_hidden).to(self.device),
+                                           self.lstm_num_hidden),
                                torch.zeros(2, input[0].shape[0],
-                                           self.lstm_num_hidden).to(self.device))
+                                           self.lstm_num_hidden))
         emb = self.embedding(input[0])
         packed_input = nn.utils.rnn.pack_padded_sequence(emb, input[1].cpu(), batch_first=True, 
                                                          enforce_sorted=False)

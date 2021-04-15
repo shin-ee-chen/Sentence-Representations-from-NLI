@@ -7,81 +7,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data as data
+from torch.utils.tensorboard import SummaryWriter
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
 import utils
-from models import NLINet
-
-from torch.utils.tensorboard import SummaryWriter
-
-class NLITrainer(pl.LightningModule):
-    
-    def __init__(self, config):
-        super().__init__()
-        # Exports the hyperparameters to a YAML file, and create "self.hparams" namespace
-        self.save_hyperparameters()
-        # Create model
-        self.model = NLINet(config)
-        # # Create loss module
-        self.config = config
-        self.loss_module = nn.CrossEntropyLoss()
-        
-        # # Example input for visualizing the graph in Tensorboard
-        # self.example_input_array = torch.zeros((1, 3, 32, 32), dtype=torch.float32)
-
-       
-    def forward(self, inout):
-        return self.model(input)
-
-
-    def configure_optimizers(self):
-        optimizer = optim.SGD(self.parameters(), self.config.lr)
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, gamma=0.99)
-        
-        return [optimizer], [scheduler]
-
-
-    def training_step(self, batch, batch_idx):
-        # "batch" is the output of the training data loader.
-        text, labels = [batch.premise, batch.hypothesis], batch.label
-        preds = self.model(text)
-        loss = self.loss_module(preds, labels)
-        acc = (preds.argmax(dim=-1) == labels).float().mean()
-        
-        self.log('train_acc', acc, on_step=False, on_epoch=True) # Logs the accuracy per epoch to tensorboard (weighted average over batches)
-        self.log('train_loss', loss)
-        return loss # Return tensor to call ".backward" on
-
-
-    def validation_step(self, batch, batch_idx):
-        text, labels = [batch.premise, batch.hypothesis], batch.label
-        preds = self.model(text).argmax(dim=-1)
-        acc = (labels == preds).float().mean()
-        # self.config.lr /= 2 
-
-        self.log('val_acc', acc) # By default logs it per epoch (weighted average over batches)
-
-
-    def test_step(self, batch, batch_idx):
-        text, labels = [batch.premise, batch.hypothesis], batch.label
-        preds = self.model(text).argmax(dim=-1)
-        acc = (labels == preds).float().mean()
-        self.log('test_acc', acc) # By default logs it per epoch (weighted average over batches), and returns it afterwards
-
-
-class LRCallback(pl.Callback):
-    
-    def __init__(self, every_n_epochs=1):
-        super().__init__()
-        self.best_val_acc = 0
-        
-
-    def on_validation_epoch_end(trainer, pl_module, outputs):
-        print(outputs)
-        trainer.optimizers
-
+from models import NLITrainer
 
 def train_model(args):
     """
@@ -91,7 +23,8 @@ def train_model(args):
     """
     
     save_name = args.encoder_type
-    # device = config.device
+    if args.max_pooling == "Ture":
+        save_name = save_name + "_Max"
    
     # Load dataset
     train_loader, val_loader, test_loader, args.TEXT = utils.load_data(args.batch_size, 
@@ -105,7 +38,8 @@ def train_model(args):
     # Create a PyTorch Lightning trainer with the generation callback
     if args.debug == "True":
         trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, save_name),                                  # Where to save models
-                             checkpoint_callback=ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_acc"), # Save the best checkpoint based on the maximum val_acc recorded. Saves only weights and not optimizer
+                             checkpoint_callback=ModelCheckpoint(save_weights_only=True, 
+                                                                 mode="max", monitor="val_acc"), # Save the best checkpoint based on the maximum val_acc recorded. Saves only weights and not optimizer
                              gpus=1 if str(args.device)=="cuda" else 0,                                                     # We run on a single GPU (if possible)
                              max_epochs=args.epochs,                                                                             # How many epochs to train for if no patience is set
                              callbacks=[LearningRateMonitor("epoch")],   
@@ -117,7 +51,8 @@ def train_model(args):
                              ) 
     else:
         trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, save_name),                                  # Where to save models
-                             checkpoint_callback=ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_acc"), # Save the best checkpoint based on the maximum val_acc recorded. Saves only weights and not optimizer
+                             checkpoint_callback=ModelCheckpoint(save_weights_only=True, 
+                                                                 mode="max", monitor="val_acc"), # Save the best checkpoint based on the maximum val_acc recorded. Saves only weights and not optimizer
                              gpus=1 if str(args.device)=="cuda" else 0,                                                     # We run on a single GPU (if possible)
                              max_epochs=args.epochs,                                                                             # How many epochs to train for if no patience is set
                              callbacks=[LearningRateMonitor("epoch")],                                                   # Log learning rate every epoch
@@ -155,7 +90,6 @@ def train_model(args):
     return model
 
 
-
 if __name__ == '__main__':
     # Feel free to add more argument parameters
     parser = argparse.ArgumentParser()
@@ -174,7 +108,7 @@ if __name__ == '__main__':
     parser.add_argument('--encoder_type', default="BLSTM_Encoder", type=str, 
                         choices=["AWE", "LSTM_Encoder", "BLSTM_Encoder"],
                         help='Type of encoder, choose from [AWE, LSTM_Encoder, BLSTM_Encoder]')
-    parser.add_argument('--max_pooling', type=str, choices=["False","True"] ,default= "True",
+    parser.add_argument('--max_pooling', type=str, choices=["False","True"] ,default= "False",
                         help="Whether to use small dataset to debug")
 
 
@@ -204,6 +138,7 @@ if __name__ == '__main__':
                         help="Whether to use small dataset to debug")
     parser.add_argument('--glove_name', type=str, default= "6B",
                         help="glove name: 6B/840B")
+
                         
     args = parser.parse_args()
 
