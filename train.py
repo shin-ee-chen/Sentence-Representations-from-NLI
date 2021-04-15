@@ -23,18 +23,27 @@ def train_model(args):
     """
     
     save_name = args.encoder_type
+    CHECKPOINT_PATH = "./checkpoints"
     if args.max_pooling == "Ture":
         save_name = save_name + "_Max"
    
     # Load dataset
-    train_loader, val_loader, test_loader, args.TEXT = utils.load_data(args.batch_size, 
+    train_loader, val_loader, test_loader, TEXT = utils.load_data(args.batch_size, 
                                                                        args.embedding_dim,
                                                                        glove_name = args.glove_name,
                                                                        device = args.device)
-    
-    CHECKPOINT_PATH = "./checkpoints"
-    
-    
+    # Use pre-trained word vectors
+    # PAD_IDX = TEXT.vocab.stoi[TEXT.pad_token]
+    # UNK_IDX = TEXT.vocab.stoi[TEXT.unk_token]
+    # with torch.no_grad():
+    #     embedding = nn.Embedding(len(TEXT.vocab), args.embedding_dim, padding_idx=PAD_IDX)
+    #     embedding.weight.data.copy_(TEXT.vocab.vectors)
+    #     embedding.weight.data[UNK_IDX] = torch.zeros(args.embedding_dim)
+    #     embedding.weight.data[PAD_IDX] = torch.zeros(args.embedding_dim)
+    #     embedding.weight.requires_grad = False
+
+    args.embedding = utils.load_pretrained_embed(TEXT,args.embedding_dim)
+
     # Create a PyTorch Lightning trainer with the generation callback
     if args.debug == "True":
         trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, save_name),                                  # Where to save models
@@ -80,7 +89,10 @@ def train_model(args):
 
     pl.seed_everything(args.seed) # To be reproducable
     
+    
     model = NLITrainer(args)
+
+
     trainer.fit(model, train_loader, val_loader)
     model = NLITrainer.load_from_checkpoint(trainer.checkpoint_callback.best_model_path) # Load best ch
     

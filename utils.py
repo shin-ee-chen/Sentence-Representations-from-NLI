@@ -39,12 +39,15 @@ def load_data(batch_size, embedding_dim, glove_name = "6B", device = "cpu"):
 def load_pretrained_embed(TEXT,embedding_dim):
       PAD_IDX = TEXT.vocab.stoi[TEXT.pad_token]
       UNK_IDX = TEXT.vocab.stoi[TEXT.unk_token]
-
-      embedding = nn.Embedding(len(TEXT.vocab), embedding_dim, padding_idx=PAD_IDX)
-      embedding.weight.data.copy_(TEXT.vocab.vectors)
-
-      embedding.weight.data[UNK_IDX] = torch.zeros(embedding_dim)
-      embedding.weight.data[PAD_IDX] = torch.zeros(embedding_dim)
+      # with torch.no_grad():
+#   lstm_model.embed.weight.data.copy_(torch.from_numpy(vectors))
+#   lstm_model.embed.weight.requires_grad = False
+      with torch.no_grad():
+          embedding = nn.Embedding(len(TEXT.vocab), embedding_dim, padding_idx=PAD_IDX)
+          embedding.weight.data.copy_(TEXT.vocab.vectors)
+          embedding.weight.data[UNK_IDX] = torch.zeros(embedding_dim)
+          embedding.weight.data[PAD_IDX] = torch.zeros(embedding_dim)
+          embedding.weight.requires_grad = False
       return embedding
 
 

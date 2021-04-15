@@ -17,7 +17,7 @@ class NLITrainer(pl.LightningModule):
         # # Create loss module
         self.config = config
         self.loss_module = nn.CrossEntropyLoss()
-        
+        self.embedding = config.embedding
         # # Example input for visualizing the graph in Tensorboard
         # self.example_input_array = torch.zeros((1, 3, 32, 32), dtype=torch.float32)
 
@@ -33,9 +33,17 @@ class NLITrainer(pl.LightningModule):
         return [optimizer], [scheduler]
 
 
+    def process_batch(self, text_tup):
+        "text_tup:[text_data, length]"
+        text_emb = self.embedding(text_tup[0])
+
+        return [text_emb, text_tup[1]]
+
+
     def training_step(self, batch, batch_idx):
         # "batch" is the output of the training data loader.
-        text, labels = [batch.premise, batch.hypothesis], batch.label
+        text = [self.process_batch(batch.premise), self.process_batch(batch.hypothesis)]
+        labels = batch.label
         preds = self.model(text)
         loss = self.loss_module(preds, labels)
         acc = (preds.argmax(dim=-1) == labels).float().mean()
@@ -46,7 +54,8 @@ class NLITrainer(pl.LightningModule):
 
 
     def validation_step(self, batch, batch_idx):
-        text, labels = [batch.premise, batch.hypothesis], batch.label
+        text = [self.process_batch(batch.premise), self.process_batch(batch.hypothesis)]
+        labels = batch.label
         preds = self.model(text).argmax(dim=-1)
         acc = (labels == preds).float().mean()
         # self.config.lr /= 2 
@@ -55,7 +64,8 @@ class NLITrainer(pl.LightningModule):
 
 
     def test_step(self, batch, batch_idx):
-        text, labels = [batch.premise, batch.hypothesis], batch.label
+        text = [self.process_batch(batch.premise), self.process_batch(batch.hypothesis)]
+        labels = batch.label
         preds = self.model(text).argmax(dim=-1)
         acc = (labels == preds).float().mean()
         self.log('test_acc', acc) # By default logs it per epoch (weighted average over batches), and returns it afterwards
@@ -71,8 +81,8 @@ class NLINet(nn.Module):
         if self.encoder_type == "AWE":
             # self.embedding = nn.Embedding(config.vocab_size, config.embedding_dim, padding_idx=1)
             # self.embedding.weight.data.copy_(config.pretrained_embed)
-            with torch.no_grad():
-                self.embedding = utils.load_pretrained_embed(config.TEXT,config.embedding_dim)
+            # with torch.no_grad():
+            #     self.embedding = utils.load_pretrained_embed(config.TEXT,config.embedding_dim)
             encode_size = 4 * config.embedding_dim
 
         elif self.encoder_type == "LSTM_Encoder":
@@ -107,14 +117,13 @@ class NLINet(nn.Module):
         self.softmax = nn.Softmax(dim = 1)
 
 
-    def forward(self, text_tup):
-        if self.encoder_type == "AWE":
-            u = self._awe_encoding(text_tup[0])
-            v = self._awe_encoding(text_tup[1])
+    def forward(self, texts):
+        u = self.encode(texts[0])
+        v = self.encode(texts[1])
 
-        else:
-            u = self.encoder(text_tup[0])
-            v = self.encoder(text_tup[1])
+        # else:
+        #     u = self.encoder(text_tup[0])
+        #     v = self.encoder(text_tup[1])
             
         features = torch.cat((u, v, torch.abs(u-v), u * v), dim = 1)
 
@@ -126,18 +135,14 @@ class NLINet(nn.Module):
     def encode(self, text_tup):
         """
         Inputs:
-        text_tup - [text_data, text_lengths]
+        text_tup - [text_data_embedding, text_lengths]
         """
         if self.encoder_type == "AWE":
-             emb = _awe_encoding(text_tup[0])
+             emb = torch.mean(text_tup[0], dim = 1)
         else:
             emb = self.encoder(text_tup)
         
         return emb
-
-    def _awe_encoding(self, input):
-        x = self.embedding(input[0])
-        return torch.mean(x, dim = 1)
 
     
 
@@ -146,19 +151,6 @@ class LSTM_Encoder(nn.Module):
         super().__init__()
         self.lstm_num_hidden = config.lstm_num_hidden
         self.device = config.device
-
-        with torch.no_grad():
-            self.embedding = utils.load_pretrained_embed(config.TEXT,config.embedding_dim)
-
-        # TEXT = config.TEXT
-        # PAD_IDX = TEXT.vocab.stoi[TEXT.pad_token]
-        # UNK_IDX = TEXT.vocab.stoi[TEXT.unk_token]
-
-        # self.embedding = nn.Embedding(len(TEXT.vocab), config.embedding_dim, padding_idx=PAD_IDX)
-        # self.embedding.weight.data.copy_(TEXT.vocab.vectors)
-
-        # self.embedding.weight.data[UNK_IDX] = torch.zeros(300)
-        # self.embedding.weight.data[PAD_IDX] = torch.zeros(300)
 
         self.lstm = nn.LSTM(config.embedding_dim, config.lstm_num_hidden, 1,
                             dropout=config.dpout_lstm
@@ -170,13 +162,13 @@ class LSTM_Encoder(nn.Module):
     def forward(self, input):
         if self.prev_state == None:
             self.prev_state = (torch.zeros(1, input[0].shape[0], 
-                                           self.lstm_num_hidden),
+                                           self.lstm_num_hidden).to(self.device),
                                torch.zeros(1, input[0].shape[0],
-                                           self.lstm_num_hidden))
-        emb = self.embedding(input[0])
+                                           self.lstm_num_hidden).to(self.device))
+        # emb = self.embedding(input[0])
         
         
-        packed_input = nn.utils.rnn.pack_padded_sequence(emb, input[1].cpu(), batch_first=True, 
+        packed_input = nn.utils.rnn.pack_padded_sequence(input[0], input[1].cpu(), batch_first=True, 
                                                          enforce_sorted=False)
         _, (h_n, _) = self.lstm(packed_input, self.prev_state)
 
@@ -191,11 +183,6 @@ class BLSTM_Encoder(nn.Module):
         self.lstm_num_hidden = config.lstm_num_hidden
         self.device = config.device
 
-        # self.embedding = nn.Embedding(config.vocab_size, config.embedding_dim, padding_idx=1)
-        # self.embedding.weight.data.copy_(config.pretrained_embed)
-        with torch.no_grad():
-            self.embedding = utils.load_pretrained_embed(config.TEXT,config.embedding_dim)
-
         self.lstm = nn.LSTM(config.embedding_dim, config.lstm_num_hidden, 1,
                             dropout= config.dpout_lstm, 
                             bidirectional = True
@@ -207,11 +194,11 @@ class BLSTM_Encoder(nn.Module):
     def forward(self, input):
         if self.prev_state == None:
             self.prev_state = (torch.zeros(2, input[0].shape[0], 
-                                           self.lstm_num_hidden),
+                                           self.lstm_num_hidden).to(self.device),
                                torch.zeros(2, input[0].shape[0],
-                                           self.lstm_num_hidden))
-        emb = self.embedding(input[0])
-        packed_input = nn.utils.rnn.pack_padded_sequence(emb, input[1].cpu(), batch_first=True, 
+                                           self.lstm_num_hidden).to(self.device))
+        # emb = self.embedding(input[0])
+        packed_input = nn.utils.rnn.pack_padded_sequence(input[0], input[1].cpu(), batch_first=True, 
                                                          enforce_sorted=False)
         output, (h_n, _) = self.lstm(packed_input, self.prev_state)
         
