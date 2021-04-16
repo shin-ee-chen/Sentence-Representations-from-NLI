@@ -171,8 +171,8 @@ class LSTM_Encoder(nn.Module):
         # emb = self.embedding(input[0])
         
         
-        packed_input = nn.utils.rnn.pack_padded_sequence(input[0], input[1].cpu(), batch_first=True, 
-                                                         enforce_sorted=False)
+        packed_input = nn.utils.rnn.pack_padded_sequence(input[0], input[1].cpu(), 
+                                                         batch_first=True, enforce_sorted=False)
         _, (h_n, _) = self.lstm(packed_input, self.prev_state)
 
         # output size is (batch_size, lstm_num_hidden)
@@ -197,9 +197,9 @@ class BLSTM_Encoder(nn.Module):
     def forward(self, input):
         if self.prev_state == None:
             self.prev_state = (torch.zeros(2, input[0].shape[0], 
-                                           self.lstm_num_hidden).to(input[0].device,
+                                           self.lstm_num_hidden).to(input[0].device),
                                torch.zeros(2, input[0].shape[0],
-                                           self.lstm_num_hidden).to(input[0].device)
+                                           self.lstm_num_hidden).to(input[0].device))
     
         packed_input = nn.utils.rnn.pack_padded_sequence(input[0], input[1].cpu(), batch_first=True, 
                                                          enforce_sorted=False)

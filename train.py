@@ -24,7 +24,7 @@ def train_model(args):
     
     save_name = args.encoder_type
     CHECKPOINT_PATH = "./checkpoints"
-    if args.max_pooling == "True":
+    if args.encoder_type == "BLSTM_Encoder" and args.max_pooling == "True":
         save_name = save_name + "_Max"
    
     # Load dataset
