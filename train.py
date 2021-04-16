@@ -24,7 +24,7 @@ def train_model(args):
     
     save_name = args.encoder_type
     CHECKPOINT_PATH = "./checkpoints"
-    if args.max_pooling == "Ture":
+    if args.max_pooling == "True":
         save_name = save_name + "_Max"
    
     # Load dataset
@@ -32,18 +32,10 @@ def train_model(args):
                                                                        args.embedding_dim,
                                                                        glove_name = args.glove_name,
                                                                        device = args.device)
-    # Use pre-trained word vectors
-    # PAD_IDX = TEXT.vocab.stoi[TEXT.pad_token]
-    # UNK_IDX = TEXT.vocab.stoi[TEXT.unk_token]
-    # with torch.no_grad():
-    #     embedding = nn.Embedding(len(TEXT.vocab), args.embedding_dim, padding_idx=PAD_IDX)
-    #     embedding.weight.data.copy_(TEXT.vocab.vectors)
-    #     embedding.weight.data[UNK_IDX] = torch.zeros(args.embedding_dim)
-    #     embedding.weight.data[PAD_IDX] = torch.zeros(args.embedding_dim)
-    #     embedding.weight.requires_grad = False
 
-    args.embedding = utils.load_pretrained_embed(TEXT,args.embedding_dim)
-
+    print("Data loaded")
+    embedding = utils.load_pretrained_embed(TEXT,args.embedding_dim)
+    print("Embed loaded")
     # Create a PyTorch Lightning trainer with the generation callback
     if args.debug == "True":
         trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, save_name),                                  # Where to save models
@@ -51,8 +43,7 @@ def train_model(args):
                                                                  mode="max", monitor="val_acc"), # Save the best checkpoint based on the maximum val_acc recorded. Saves only weights and not optimizer
                              gpus=1 if str(args.device)=="cuda" else 0,                                                     # We run on a single GPU (if possible)
                              max_epochs=args.epochs,                                                                             # How many epochs to train for if no patience is set
-                             callbacks=[LearningRateMonitor("epoch")],   
-                            #  callbacks=[LRCallback()],                                                # Log learning rate every epoch
+                             callbacks=[LearningRateMonitor("epoch")],                                                # Log learning rate every epoch
                              progress_bar_refresh_rate=10,
                              limit_train_batches=10,
                              limit_val_batches=10,
@@ -67,8 +58,8 @@ def train_model(args):
                              callbacks=[LearningRateMonitor("epoch")],                                                   # Log learning rate every epoch
                              progress_bar_refresh_rate=100
                              )                                                                   # In case your notebook crashes due to the progress bar, consider increasing the refresh rate
-    # trainer.logger._log_graph = True         # If True, we plot the computation graph in tensorboard
-    # trainer.logger._default_hp_metric = None # Optional logging argument that we don't need
+    trainer.logger._log_graph = True         # If True, we plot the computation graph in tensorboard
+    trainer.logger._default_hp_metric = None # Optional logging argument that we don't need
 
     # Check whether pretrained model exists. If yes, load it and skip training
     # pretrained_filename = os.path.join(CHECKPOINT_PATH, save_name + ".ckpt")
@@ -90,9 +81,7 @@ def train_model(args):
     pl.seed_everything(args.seed) # To be reproducable
     
     
-    model = NLITrainer(args)
-
-
+    model = NLITrainer(args, embedding)
     trainer.fit(model, train_loader, val_loader)
     model = NLITrainer.load_from_checkpoint(trainer.checkpoint_callback.best_model_path) # Load best ch
     
@@ -117,10 +106,10 @@ if __name__ == '__main__':
                         help='dropout rate of fc') 
     parser.add_argument('--dpout_lstm', default=0., type=float,
                         help='dropout rate of lstm')                 
-    parser.add_argument('--encoder_type', default="BLSTM_Encoder", type=str, 
+    parser.add_argument('--encoder_type', default="AWE", type=str, 
                         choices=["AWE", "LSTM_Encoder", "BLSTM_Encoder"],
                         help='Type of encoder, choose from [AWE, LSTM_Encoder, BLSTM_Encoder]')
-    parser.add_argument('--max_pooling', type=str, choices=["False","True"] ,default= "False",
+    parser.add_argument('--max_pooling', type=str, choices=["False","True"] ,default= "True",
                         help="Whether to use small dataset to debug")
 
 

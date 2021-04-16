@@ -14,7 +14,9 @@ import os
 def load_data(batch_size, embedding_dim, glove_name = "6B", device = "cpu"):
       # set up fields
       TEXT = data.Field(lower=True, include_lengths=True, batch_first=True, 
-                        tokenize="spacy",tokenizer_language = 'en_core_web_sm')
+                        tokenize="spacy",
+                        tokenizer_language = 'en_core_web_sm'
+                        )
       LABEL = data.Field(sequential=False)
 
       # make splits for data
@@ -26,7 +28,6 @@ def load_data(batch_size, embedding_dim, glove_name = "6B", device = "cpu"):
       LABEL.build_vocab(train, specials_first=False)
 
       vocab_size = len(TEXT.vocab)
-      pretrained_embeddings = TEXT.vocab.vectors
 
       train_iter, val_iter, test_iter = data.Iterator.splits(
                                         (train, val, test), 
@@ -37,11 +38,9 @@ def load_data(batch_size, embedding_dim, glove_name = "6B", device = "cpu"):
 
 
 def load_pretrained_embed(TEXT,embedding_dim):
-      PAD_IDX = TEXT.vocab.stoi[TEXT.pad_token]
-      UNK_IDX = TEXT.vocab.stoi[TEXT.unk_token]
-      # with torch.no_grad():
-#   lstm_model.embed.weight.data.copy_(torch.from_numpy(vectors))
-#   lstm_model.embed.weight.requires_grad = False
+      PAD_IDX = TEXT.vocab.stoi[TEXT.pad_token] #<pad>, 0
+      UNK_IDX = TEXT.vocab.stoi[TEXT.unk_token] #<unk>, 1
+
       with torch.no_grad():
           embedding = nn.Embedding(len(TEXT.vocab), embedding_dim, padding_idx=PAD_IDX)
           embedding.weight.data.copy_(TEXT.vocab.vectors)
@@ -128,19 +127,19 @@ if __name__ == '__main__':
 
       # config = parser.parse_args()
 
-      # train_iter, _, _, config.TEXT = load_data(4, config.embedding_dim)
-      # i = 0
-      # encoder = LSTM_Encoder(config)
-      # for batch in train_iter:
-      #       # word vector
-      #       text, labels = [batch.premise, batch.hypothesis], batch.label
+      train_iter, val_iter, _, TEXT = load_data(4, 300)
+      i = 0
+    #   encoder = LSTM_Encoder(config)
+      for batch in val_iter:
+            # word vector
+            text, labels = [batch.premise, batch.hypothesis], batch.label
             
-      #       # print(text[0])
-      #       # print("break for text 0")
-      #       out = encoder(text[0])
+            # print(text[0])
+            # print("break for text 0")
+            # out = encoder(text[0])
             
-      #       i += 1
-      #       print(out.shape)
-      #       # [4 , 4096]
-      #       if i > 1:
-      #           break
+            i += 1
+            # print(out.shape)
+            # [4 , 4096]
+            if i > 1:
+                break

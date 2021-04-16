@@ -8,16 +8,18 @@ import utils
 
 class NLITrainer(pl.LightningModule):
     
-    def __init__(self, config):
+    def __init__(self, config, embedding):
         super().__init__()
         # Exports the hyperparameters to a YAML file, and create "self.hparams" namespace
         self.save_hyperparameters()
-        # Create model
+        
+        self.config = config
+        self.embedding = embedding
+        # Create model        
         self.model = NLINet(config)
         # # Create loss module
-        self.config = config
+        
         self.loss_module = nn.CrossEntropyLoss()
-        self.embedding = config.embedding
         # # Example input for visualizing the graph in Tensorboard
         # self.example_input_array = torch.zeros((1, 3, 32, 32), dtype=torch.float32)
 
@@ -41,7 +43,7 @@ class NLITrainer(pl.LightningModule):
 
 
     def training_step(self, batch, batch_idx):
-        # "batch" is the output of the training data loader.
+        # "batch" is the output of the train data loader.
         text = [self.process_batch(batch.premise), self.process_batch(batch.hypothesis)]
         labels = batch.label
         preds = self.model(text)
@@ -79,10 +81,6 @@ class NLINet(nn.Module):
         self.encoder_type = config.encoder_type
 
         if self.encoder_type == "AWE":
-            # self.embedding = nn.Embedding(config.vocab_size, config.embedding_dim, padding_idx=1)
-            # self.embedding.weight.data.copy_(config.pretrained_embed)
-            # with torch.no_grad():
-            #     self.embedding = utils.load_pretrained_embed(config.TEXT,config.embedding_dim)
             encode_size = 4 * config.embedding_dim
 
         elif self.encoder_type == "LSTM_Encoder":
