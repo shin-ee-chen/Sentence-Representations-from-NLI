@@ -42,7 +42,7 @@ class NLITrainer(pl.LightningModule):
         return [text_emb, text_tup[1]]
     
     def encode(self, text_tup):
-        "text_tup:[text_data, length]"
+        "text_tup:[text_data_emb, length]"
         text_tup = self.process_batch(text_tup)
         return self.model.encode(text_tup)
     
