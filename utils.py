@@ -51,7 +51,7 @@ def load_pretrained_embed(TEXT,embedding_dim):
 
 
 
-def load_latest(trainer, save_name, inference=False, map_location=None, silent = False):
+def load_latest(trainer, path, save_name, inference=False, map_location=None, silent = False):
     """Loads the last found model from the checkpoints directory
     Args:
         trainer: PyTorch Lightning module that has the .load_from_checkpoint attribute
@@ -80,7 +80,7 @@ def load_latest(trainer, save_name, inference=False, map_location=None, silent =
 
     def find_latest_version(save_name):
         save_loc = os.path.join(
-            "./checkpoints/", save_name, 'lightning_logs')
+            path, save_name, 'lightning_logs')
         folders = os.listdir(save_loc)
         if len(folders) == 0: return "None"
         folders.sort(key=version_to_number)

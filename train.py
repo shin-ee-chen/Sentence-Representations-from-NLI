@@ -34,7 +34,7 @@ def train_model(args):
                                                                        device = args.device)
 
     print("Data loaded")
-    embedding = utils.load_pretrained_embed(TEXT,args.embedding_dim)
+    args.embedding = utils.load_pretrained_embed(TEXT,args.embedding_dim)
     print("Embed loaded")
     # Create a PyTorch Lightning trainer with the generation callback
     if args.debug == "True":
@@ -81,7 +81,7 @@ def train_model(args):
     pl.seed_everything(args.seed) # To be reproducable
     
     
-    model = NLITrainer(args, embedding)
+    model = NLITrainer(args)
     trainer.fit(model, train_loader, val_loader)
     model = NLITrainer.load_from_checkpoint(trainer.checkpoint_callback.best_model_path) # Load best ch
     
@@ -106,7 +106,7 @@ if __name__ == '__main__':
                         help='dropout rate of fc') 
     parser.add_argument('--dpout_lstm', default=0., type=float,
                         help='dropout rate of lstm')                 
-    parser.add_argument('--encoder_type', default="AWE", type=str, 
+    parser.add_argument('--encoder_type', default="LSTM_Encoder", type=str, 
                         choices=["AWE", "LSTM_Encoder", "BLSTM_Encoder"],
                         help='Type of encoder, choose from [AWE, LSTM_Encoder, BLSTM_Encoder]')
     parser.add_argument('--max_pooling', type=str, choices=["False","True"] ,default= "True",
@@ -124,9 +124,8 @@ if __name__ == '__main__':
                         help='Number of epochs to train.')
     parser.add_argument('--seed', default=42, type=int,
                         help='Seed to use for reproducing results')
-    parser.add_argument('--num_workers', default=4, type=int,
-                        help='Number of workers to use in the data loaders.' + \
-                             'To have a truly deterministic run, this has to be 0.')
+    # parser.add_argument('--num_classes', default=3, type=int,
+    #                     help='Number of classes')
     parser.add_argument('--log_dir', default='logs/', type=str,
                         help='Directory where the PyTorch Lightning logs ' + \
                              'should be created.')

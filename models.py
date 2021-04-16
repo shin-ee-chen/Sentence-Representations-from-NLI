@@ -8,24 +8,24 @@ import utils
 
 class NLITrainer(pl.LightningModule):
     
-    def __init__(self, config, embedding):
+    def __init__(self, config):
         super().__init__()
         # Exports the hyperparameters to a YAML file, and create "self.hparams" namespace
         self.save_hyperparameters()
         
         self.config = config
-        self.embedding = embedding
+        self.embedding = config.embedding
         # Create model        
         self.model = NLINet(config)
         # # Create loss module
-        
         self.loss_module = nn.CrossEntropyLoss()
         # # Example input for visualizing the graph in Tensorboard
         # self.example_input_array = torch.zeros((1, 3, 32, 32), dtype=torch.float32)
 
        
-    def forward(self, inout):
-        return self.model(input)
+    def forward(self, texts):
+        texts = [self.process_batch(texts[0]),self.process_batch(texts[1])]
+        return self.model(texts)
 
 
     def configure_optimizers(self):
@@ -40,8 +40,12 @@ class NLITrainer(pl.LightningModule):
         text_emb = self.embedding(text_tup[0])
 
         return [text_emb, text_tup[1]]
-
-
+    
+    def encode(self, text_tup):
+        "text_tup:[text_data, length]"
+        text_tup = self.process_batch(text_tup)
+        return self.model.encode(text_tup)
+    
     def training_step(self, batch, batch_idx):
         # "batch" is the output of the train data loader.
         text = [self.process_batch(batch.premise), self.process_batch(batch.hypothesis)]
@@ -151,7 +155,8 @@ class LSTM_Encoder(nn.Module):
         self.device = config.device
 
         self.lstm = nn.LSTM(config.embedding_dim, config.lstm_num_hidden, 1,
-                            dropout=config.dpout_lstm
+                            dropout=config.dpout_lstm,
+                            bidirectional = False
                             )
                             
         self.prev_state = None
@@ -160,9 +165,9 @@ class LSTM_Encoder(nn.Module):
     def forward(self, input):
         if self.prev_state == None:
             self.prev_state = (torch.zeros(1, input[0].shape[0], 
-                                           self.lstm_num_hidden).to(self.device),
+                                           self.lstm_num_hidden).to(input[0].device),
                                torch.zeros(1, input[0].shape[0],
-                                           self.lstm_num_hidden).to(self.device))
+                                           self.lstm_num_hidden).to(input[0].device))
         # emb = self.embedding(input[0])
         
         
@@ -192,10 +197,10 @@ class BLSTM_Encoder(nn.Module):
     def forward(self, input):
         if self.prev_state == None:
             self.prev_state = (torch.zeros(2, input[0].shape[0], 
-                                           self.lstm_num_hidden).to(self.device),
+                                           self.lstm_num_hidden).to(input[0].device,
                                torch.zeros(2, input[0].shape[0],
-                                           self.lstm_num_hidden).to(self.device))
-        # emb = self.embedding(input[0])
+                                           self.lstm_num_hidden).to(input[0].device)
+    
         packed_input = nn.utils.rnn.pack_padded_sequence(input[0], input[1].cpu(), batch_first=True, 
                                                          enforce_sorted=False)
         output, (h_n, _) = self.lstm(packed_input, self.prev_state)
