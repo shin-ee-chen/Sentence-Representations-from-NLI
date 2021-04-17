@@ -4,7 +4,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --job-name=blstm_max
 #SBATCH --cpus-per-task=3
-#SBATCH --time=10:00:00
+#SBATCH --time=15:00:00
 #SBATCH --mem=32000M
 #SBATCH --output=slurm_output_%A.out
 
@@ -21,7 +21,7 @@ cd $HOME/Sentence_Representations_from_NLI
 # Activate your environment
 source activate dl2020
 # Run your code
-echo "running BLSTM"
+echo "running BLSTM_max"
 srun python -u train.py --debug False --glove_name 840B --epochs 30 --batch_size 64 --encoder_type BLSTM_Encoder --lstm_num_hidden 2048 --max_pooling True
 
 echo "finish"
