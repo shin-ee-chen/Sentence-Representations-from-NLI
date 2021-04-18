@@ -74,22 +74,7 @@ def train_model(args):
     trainer.logger._log_graph = True         # If True, we plot the computation graph in tensorboard
     trainer.logger._default_hp_metric = None # Optional logging argument that we don't need
 
-    # Check whether pretrained model exists. If yes, load it and skip training
-    # pretrained_filename = os.path.join(CHECKPOINT_PATH, save_name + ".ckpt")
 
-    # if os.path.isfile(pretrained_filename):
-    #     print("Found pretrained model at %s, loading..." % pretrained_filename)
-    #     # model = CIFARTrainer.load_from_checkpoint(pretrained_filename) # Automatically loads the model with the saved hyperparameters
-    # else:
-        # pl.seed_everything(42) # To be reproducable
-        # model = NLITrainer(model_name=model_name, **kwargs)
-        # trainer.fit(model, train_loader, val_loader)
-        # model = CIFARTrainer.load_from_checkpoint(trainer.checkpoint_callback.best_model_path) # Load best checkpoint after training
-
-    # Test best model on validation and test set
-    # val_result = trainer.test(model, test_dataloaders=val_loader, verbose=False)
-    # test_result = trainer.test(model, test_dataloaders=test_loader, verbose=False)
-    # result = {"test": test_result[0]["test_acc"], "val": val_result[0]["test_acc"]}
 
     pl.seed_everything(args.seed) # To be reproducable
     
@@ -139,8 +124,7 @@ if __name__ == '__main__':
                         help='Number of epochs to train.')
     parser.add_argument('--seed', default=42, type=int,
                         help='Seed to use for reproducing results')
-    # parser.add_argument('--num_classes', default=3, type=int,
-    #                     help='Number of classes')
+    
     parser.add_argument('--log_dir', default='logs/', type=str,
                         help='Directory where the PyTorch Lightning logs ' + \
                              'should be created.')
@@ -151,7 +135,7 @@ if __name__ == '__main__':
                         help="Device to run the model on.")
     parser.add_argument('--debug', type=str, choices=["False","True"] ,default= "True",
                         help="Whether to use small dataset to debug")
-    parser.add_argument('--glove_name', type=str, default= "6B",
+    parser.add_argument('--glove_name', type=str, default= "840B",
                         help="glove name: 6B/840B")
 
                         
