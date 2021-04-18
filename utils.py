@@ -27,7 +27,6 @@ def load_data(batch_size, embedding_dim, glove_name = "6B", device = "cpu"):
       # TEXT.build_vocab(train, vectors=GloVe(name='840B', dim=300))
       LABEL.build_vocab(train, specials_first=False)
 
-      vocab_size = len(TEXT.vocab)
 
       train_iter, val_iter, test_iter = data.Iterator.splits(
                                         (train, val, test), 

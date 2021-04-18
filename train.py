@@ -15,6 +15,17 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 import utils
 from models import NLITrainer
 
+
+class MyLRCallback(pl.Callback):
+    def on_init_start(self, trainer):
+        self.best_acc = 0
+
+    def on_validation_epoch_end(self, trainer, pl_module):
+        trainer.optimizer.lr = trainer.optimizer.lr * 0.1
+        # print(outputs)
+        trainer.train = False
+
+
 def train_model(args):
     """
     Function for training and testing a NLI model.
@@ -35,15 +46,17 @@ def train_model(args):
 
     print("Data loaded")
     args.embedding = utils.load_pretrained_embed(TEXT,args.embedding_dim)
-    print("Embed loaded")
+    print("Pretrained vectors loaded")
     # Create a PyTorch Lightning trainer with the generation callback
     if args.debug == "True":
+        myLRcallback = MyLRCallback()
         trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, save_name),                                  # Where to save models
                              checkpoint_callback=ModelCheckpoint(save_weights_only=True, 
                                                                  mode="max", monitor="val_acc"), # Save the best checkpoint based on the maximum val_acc recorded. Saves only weights and not optimizer
                              gpus=1 if str(args.device)=="cuda" else 0,                                                     # We run on a single GPU (if possible)
                              max_epochs=args.epochs,                                                                             # How many epochs to train for if no patience is set
-                             callbacks=[LearningRateMonitor("epoch")],                                                # Log learning rate every epoch
+                             callbacks=[LearningRateMonitor("epoch")], 
+                            #  callbacks= [myLRcallback],                                               # Log learning rate every epoch
                              progress_bar_refresh_rate=10,
                              limit_train_batches=10,
                              limit_val_batches=10,
@@ -91,6 +104,8 @@ def train_model(args):
     return model
 
 
+
+
 if __name__ == '__main__':
     # Feel free to add more argument parameters
     parser = argparse.ArgumentParser()
@@ -106,7 +121,7 @@ if __name__ == '__main__':
                         help='dropout rate of fc') 
     parser.add_argument('--dpout_lstm', default=0., type=float,
                         help='dropout rate of lstm')                 
-    parser.add_argument('--encoder_type', default="LSTM_Encoder", type=str, 
+    parser.add_argument('--encoder_type', default="AWE", type=str, 
                         choices=["AWE", "LSTM_Encoder", "BLSTM_Encoder"],
                         help='Type of encoder, choose from [AWE, LSTM_Encoder, BLSTM_Encoder]')
     parser.add_argument('--max_pooling', type=str, choices=["False","True"] ,default= "True",

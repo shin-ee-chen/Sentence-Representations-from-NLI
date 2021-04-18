@@ -31,8 +31,9 @@ class NLITrainer(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = optim.SGD(self.parameters(), self.config.lr)
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, gamma=0.99)
-        
+        # self.optimizer = optimizer
         return [optimizer], [scheduler]
+        # return [optimizer]
 
 
     def process_batch(self, text_tup):

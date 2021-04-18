@@ -63,11 +63,12 @@ def batcher(params, batch):
     """
     # if a sentence is empty dot is set to be the only token
     # you can change it into NULL dependening in your model
+    batch = [sent if sent != [] else ['.'] for sent in batch]
     text_tup = params.TEXT.process(batch)
     
     with torch.no_grad(): 
-        emb = params.trainer.encode(text_tup).to(params.device)
-    return emb.detach().numpy()
+        emb = params.trainer.encode(text_tup)
+    return emb.detach().cpu().numpy()
 
 
 # Set params for SentEval
@@ -87,7 +88,7 @@ logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--encoder_type', default="BLSTM_Encoder_Max", type=str, 
+    parser.add_argument('--encoder_type', default="AWE", type=str, 
                         choices=["AWE", "LSTM_Encoder", "BLSTM_Encoder", "BLSTM_Encoder_Max"],
                         help='Type of encoder, choose from [AWE, LSTM_Encoder, BLSTM_Encoder]')
     parser.add_argument('--device', type=str, default=("cpu" if not torch.cuda.is_available() else "cuda"),
@@ -119,8 +120,9 @@ if __name__ == "__main__":
     # but STS14 (semantic textual similarity) is a similar type of semantic task
     
     # transfer_tasks = ['MR', 'CR', 'SUBJ','MPQA',  'SST2', 'TREC',
-    #                   'MRPC', 'SICKRelatedness','SICKEntailment', STS14']
-    transfer_tasks = ['MR']
+    #                   'MRPC', 'SICKRelatedness','SICKEntailment', 'STS14']
+    # transfer_tasks = ['MR', 'CR', 'SUBJ','MPQA',  'SST2', 'TREC',
+    #                   'MRPC', 'SICKEntailment', 'STS14']
     # senteval prints the results and returns a dictionary with the scores
     
     
@@ -136,7 +138,7 @@ if __name__ == "__main__":
     file = open(output_path, 'w') 
 
     for k, v in results.items():
-        file.write(str(k)+' '+str(v["acc"])+'\n')
+        file.write(str(k)+' '+str(v)+'\n')
         
     file.close()
     print(f"File save to {output_path}")
