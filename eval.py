@@ -121,8 +121,8 @@ if __name__ == "__main__":
     
     # transfer_tasks = ['MR', 'CR', 'SUBJ','MPQA',  'SST2', 'TREC',
     #                   'MRPC', 'SICKRelatedness','SICKEntailment', 'STS14']
-    # transfer_tasks = ['MR', 'CR', 'SUBJ','MPQA',  'SST2', 'TREC',
-    #                   'MRPC', 'SICKEntailment', 'STS14']
+    transfer_tasks = ['MR', 'CR', 'SUBJ','MPQA',  'SST2', 'TREC',
+                      'MRPC', 'SICKEntailment', 'STS14']
     # senteval prints the results and returns a dictionary with the scores
     
     
